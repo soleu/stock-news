@@ -21,6 +21,7 @@ print(f"수집된 URL {len(urls)}개:\n" + "\n".join(urls))
 
 # 2. Tavily extract로 원문 추출
 extract_results = tavily.extract(urls=urls)
+print(f"추출된 기사 수: {len(extract_results['results'])}")
 
 raw_content = "\n\n---\n\n".join([
     f"출처: {r['url']}\n\n{r['raw_content'][:2000]}"
@@ -28,9 +29,9 @@ raw_content = "\n\n---\n\n".join([
 ])
 
 # 3. Claude가 원문 기반으로 요약 + 설명 + X 포스트 작성
-client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-message = client.messages.create(
+message = claude.messages.create(
     model="claude-sonnet-4-20250514",
     max_tokens=600,
     messages=[{
@@ -55,13 +56,12 @@ message = client.messages.create(
 post_text = message.content[0].text.strip()
 print(f"최종 포스트:\n{post_text}")
 
-# 4. X에 포스팅
-auth = tweepy.OAuth1UserHandler(
-    os.environ["X_API_KEY"],
-    os.environ["X_API_SECRET"],
-    os.environ["X_ACCESS_TOKEN"],
-    os.environ["X_ACCESS_SECRET"],
+# 4. X에 포스팅 (v2 방식)
+client_x = tweepy.Client(
+    consumer_key=os.environ["X_API_KEY"],
+    consumer_secret=os.environ["X_API_SECRET"],
+    access_token=os.environ["X_ACCESS_TOKEN"],
+    access_token_secret=os.environ["X_ACCESS_SECRET"],
 )
-api = tweepy.API(auth)
-api.update_status(post_text)
+client_x.create_tweet(text=post_text)
 print("X 포스팅 완료!")
